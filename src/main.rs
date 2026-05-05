@@ -3,7 +3,7 @@ use std::{
     io::{self, BufWriter, Write},
 };
 
-use ppm_explore::{Vec2, Vector};
+use ppm_explore::{Vec2f32, Vector};
 
 const HEIGHT: usize = 512;
 const WIDTH: usize = 512;
@@ -22,14 +22,14 @@ fn main() -> io::Result<()> {
         for x in 0..WIDTH {
             let u = x as f32 / WIDTH as f32;
             let v = y as f32 / HEIGHT as f32;
-            let color = empty_circle_frag(Vec2::new(u, v));
+            let color = empty_circle_frag(Vec2f32::new(u, v));
             write_color(color, &mut output)?;
         }
     }
     Ok(())
 }
 
-type Color = Vector<3>;
+type Color = Vector<3, f32>;
 
 fn write_color(color: Color, output: &mut BufWriter<File>) -> io::Result<()> {
     let Vector([r, g, b]) = color;
@@ -40,7 +40,7 @@ fn write_color(color: Color, output: &mut BufWriter<File>) -> io::Result<()> {
     Ok(())
 }
 
-fn stripes_frag(uv: Vec2) -> Color {
+fn stripes_frag(uv: Vec2f32) -> Color {
     let n = 20.;
     Color::new(
         ((uv.x() * n).sin() + 1.) / 2.,
@@ -49,16 +49,16 @@ fn stripes_frag(uv: Vec2) -> Color {
     )
 }
 
-const FRAG_CENTER: Vec2 = Vec2::init_with(0.5);
+const FRAG_CENTER: Vec2f32 = Vec2f32::splat(0.5);
 
-fn circle_frag(uv: Vec2) -> Color {
+fn circle_frag(uv: Vec2f32) -> Color {
     const RADIUS: f32 = 0.25;
     let diff = FRAG_CENTER - uv;
     let r = (diff.length() < RADIUS) as u8 as f32;
     Color::new(r, 0.0, 0.0)
 }
 
-fn empty_circle_frag(uv: Vec2) -> Color {
+fn empty_circle_frag(uv: Vec2f32) -> Color {
     const OUTER_RADIUS: f32 = 0.25;
     const INNER_RADIUS: f32 = OUTER_RADIUS - 0.05;
     let len = (FRAG_CENTER - uv).length();

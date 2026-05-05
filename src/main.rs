@@ -13,7 +13,7 @@ fn main() -> io::Result<()> {
     let mut output = BufWriter::new(
         File::options()
             .write(true)
-            .create(true)
+            .truncate(true)
             .open("output.ppm")?,
     );
     output.write_ln("P6")?;
@@ -36,7 +36,7 @@ fn write_color(color: Color, output: &mut BufWriter<File>) -> io::Result<()> {
     let r = (r * RANGE as f32).round() as u8;
     let g = (g * RANGE as f32).round() as u8;
     let b = (b * RANGE as f32).round() as u8;
-    output.write(&[r, g, b])?;
+    output.write_all(&[r, g, b])?;
     Ok(())
 }
 

@@ -52,15 +52,15 @@ fn stripes_frag(uv: Vec2f32) -> Color {
 const FRAG_CENTER: Vec2f32 = Vec2f32::splat(0.5);
 
 fn circle_frag(uv: Vec2f32) -> Color {
-    const RADIUS: f32 = 0.25;
+    const RADIUS: f64 = 0.25;
     let diff = FRAG_CENTER - uv;
     let r = (diff.length() < RADIUS) as u8 as f32;
     Color::new(r, 0.0, 0.0)
 }
 
 fn empty_circle_frag(uv: Vec2f32) -> Color {
-    const OUTER_RADIUS: f32 = 0.25;
-    const INNER_RADIUS: f32 = OUTER_RADIUS - 0.05;
+    const OUTER_RADIUS: f64 = 0.25;
+    const INNER_RADIUS: f64 = OUTER_RADIUS - 0.05;
     let len = (FRAG_CENTER - uv).length();
     let r = (len < OUTER_RADIUS && len > INNER_RADIUS) as u8 as f32;
     Color::new(r, 0.0, 0.0)

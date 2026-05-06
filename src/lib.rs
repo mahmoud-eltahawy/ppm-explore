@@ -1,7 +1,7 @@
 use std::{
     array::from_fn,
     mem::{ManuallyDrop, MaybeUninit},
-    ops::{Add, Div, Mul, Sub},
+    ops::{Add, AddAssign, Div, Mul, Neg, Sub},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -29,16 +29,18 @@ where
     }
 }
 
-impl<const L: usize, V: Mul<Output = V> + Copy + Into<f32>> Vector<L, V> {
-    pub fn length(&self) -> f32 {
+impl<const L: usize, V: Mul<Output = V> + Copy + Into<f64>> Vector<L, V> {
+    pub fn length(&self) -> f64 {
+        self.length_sq().sqrt()
+    }
+    pub fn length_sq(&self) -> f64 {
         self.0
             .iter()
             .map(|x| {
-                let x: f32 = (*x * *x).into();
+                let x: f64 = (*x * *x).into();
                 x
             })
-            .sum::<f32>()
-            .sqrt()
+            .sum::<f64>()
     }
 }
 
@@ -130,18 +132,29 @@ union ArrayTransmute<T, const N: usize> {
 }
 
 impl<const L: usize, V> Vector<L, V> {
-    fn zip_map<F: Fn(V, V) -> V>(self, rhs: Self, f: F) -> Self {
+    unsafe fn from_exact_iter(iter: impl IntoIterator<Item = V>) -> Self {
         let mut res: [MaybeUninit<V>; L] = from_fn(|_| MaybeUninit::uninit());
-
-        for (i, (a, b)) in self.0.into_iter().zip(rhs.0).enumerate() {
-            res[i].write(f(a, b));
+        for (i, val) in iter.into_iter().enumerate() {
+            debug_assert!(i < L, "iterator produced more than L items");
+            res[i].write(val);
         }
-
-        // SAFETY: Every element in `res` has been written to.
+        // SAFETY: we trust the caller that exactly L items were written.
         let union = ArrayTransmute {
             from: ManuallyDrop::new(res),
         };
-        Self(unsafe { ManuallyDrop::into_inner(union.to) })
+        unsafe { Self(ManuallyDrop::into_inner(union.to)) }
+    }
+}
+
+impl<const L: usize, V> Vector<L, V> {
+    fn zip_map<F: Fn(V, V) -> V>(self, rhs: Self, f: F) -> Self {
+        unsafe { Self::from_exact_iter(self.0.into_iter().zip(rhs.0).map(|(a, b)| f(a, b))) }
+    }
+}
+
+impl<const L: usize, V> Vector<L, V> {
+    fn map<F: Fn(V) -> V>(self, f: F) -> Self {
+        unsafe { Self::from_exact_iter(self.0.into_iter().map(f)) }
     }
 }
 
@@ -174,5 +187,40 @@ impl<const L: usize, V: Mul<Output = V>> Mul for Vector<L, V> {
 
     fn mul(self, rhs: Self) -> Self::Output {
         self.zip_map(rhs, V::mul)
+    }
+}
+
+impl<const L: usize, V: Neg<Output = V>> Neg for Vector<L, V> {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        self.map(|a| -a)
+    }
+}
+
+impl<const L: usize, V: Mul<Output = V> + Copy> Mul<V> for Vector<L, V> {
+    type Output = Self;
+    fn mul(self, scalar: V) -> Self::Output {
+        self.map(|a| a * scalar)
+    }
+}
+
+impl<const L: usize, V: Div<Output = V> + Copy> Div<V> for Vector<L, V> {
+    type Output = Self;
+    fn div(self, scalar: V) -> Self::Output {
+        self.map(|a| a / scalar)
+    }
+}
+
+impl<const L: usize, V: Mul<Output = V> + AddAssign + Copy> Vector<L, V> {
+    pub fn dot(self, rhs: Self) -> V {
+        let product = self * rhs;
+        let mut iter = product.0.into_iter();
+        let first = iter.next().unwrap(); // L is always >= 1?
+        let mut acc = first;
+        for x in iter {
+            acc += x;
+        }
+        acc
     }
 }

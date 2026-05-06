@@ -1,8 +1,4 @@
-use std::{
-    array::from_fn,
-    mem::{ManuallyDrop, MaybeUninit},
-    ops::{Add, AddAssign, Div, Mul, Neg, Sub},
-};
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vector<const L: usize, V>([V; L]);
@@ -126,39 +122,26 @@ impl<V> Vec4<V> {
     }
 }
 
-union ArrayTransmute<T, const N: usize> {
-    from: ManuallyDrop<[MaybeUninit<T>; N]>,
-    to: ManuallyDrop<[T; N]>,
-}
-
-impl<const L: usize, V> Vector<L, V> {
-    unsafe fn from_exact_iter(iter: impl IntoIterator<Item = V>) -> Self {
-        let mut res: [MaybeUninit<V>; L] = from_fn(|_| MaybeUninit::uninit());
-        for (i, val) in iter.into_iter().enumerate() {
-            debug_assert!(i < L, "iterator produced more than L items");
-            res[i].write(val);
+impl<const L: usize, V: Copy> Vector<L, V> {
+    fn zip_map<F: Fn(V, V) -> V>(mut self, rhs: Self, f: F) -> Self {
+        for (i, v) in self.0.iter_mut().enumerate() {
+            let o = &rhs.0[i];
+            *v = f(*v, *o);
         }
-        // SAFETY: we trust the caller that exactly L items were written.
-        let union = ArrayTransmute {
-            from: ManuallyDrop::new(res),
-        };
-        unsafe { Self(ManuallyDrop::into_inner(union.to)) }
+        self
     }
 }
 
-impl<const L: usize, V> Vector<L, V> {
-    fn zip_map<F: Fn(V, V) -> V>(self, rhs: Self, f: F) -> Self {
-        unsafe { Self::from_exact_iter(self.0.into_iter().zip(rhs.0).map(|(a, b)| f(a, b))) }
+impl<const L: usize, V: Copy> Vector<L, V> {
+    fn map<F: Fn(V) -> V>(mut self, f: F) -> Self {
+        for v in self.0.iter_mut() {
+            *v = f(*v);
+        }
+        self
     }
 }
 
-impl<const L: usize, V> Vector<L, V> {
-    fn map<F: Fn(V) -> V>(self, f: F) -> Self {
-        unsafe { Self::from_exact_iter(self.0.into_iter().map(f)) }
-    }
-}
-
-impl<const L: usize, V: Add<Output = V>> Add for Vector<L, V> {
+impl<const L: usize, V: Add<Output = V> + Copy> Add for Vector<L, V> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -166,7 +149,7 @@ impl<const L: usize, V: Add<Output = V>> Add for Vector<L, V> {
     }
 }
 
-impl<const L: usize, V: Sub<Output = V>> Sub for Vector<L, V> {
+impl<const L: usize, V: Sub<Output = V> + Copy> Sub for Vector<L, V> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -174,7 +157,7 @@ impl<const L: usize, V: Sub<Output = V>> Sub for Vector<L, V> {
     }
 }
 
-impl<const L: usize, V: Div<Output = V>> Div for Vector<L, V> {
+impl<const L: usize, V: Div<Output = V> + Copy> Div for Vector<L, V> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
@@ -182,7 +165,7 @@ impl<const L: usize, V: Div<Output = V>> Div for Vector<L, V> {
     }
 }
 
-impl<const L: usize, V: Mul<Output = V>> Mul for Vector<L, V> {
+impl<const L: usize, V: Mul<Output = V> + Copy> Mul for Vector<L, V> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -190,7 +173,7 @@ impl<const L: usize, V: Mul<Output = V>> Mul for Vector<L, V> {
     }
 }
 
-impl<const L: usize, V: Neg<Output = V>> Neg for Vector<L, V> {
+impl<const L: usize, V: Neg<Output = V> + Copy> Neg for Vector<L, V> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {

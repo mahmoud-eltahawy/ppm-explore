@@ -5,7 +5,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Vector<const L: usize, V>(pub [V; L]);
+pub struct Vector<const L: usize, V>([V; L]);
 
 impl<const L: usize, V: Default + Copy> Default for Vector<L, V> {
     fn default() -> Self {
@@ -17,17 +17,15 @@ impl<const L: usize, V> Vector<L, V>
 where
     V: Copy,
 {
+    pub const fn get(&self, i: usize) -> Option<V> {
+        if i < L { Some(self.0[i]) } else { None }
+    }
     pub const fn splat(v: V) -> Self {
         Self([v; L])
     }
-    pub fn nth(&self, i: usize) -> Option<V> {
-        if i < L { Some(self.0[i]) } else { None }
-    }
-    pub fn x(&self) -> V {
-        self.0[0]
-    }
-    pub fn y(&self) -> V {
-        self.0[1]
+    pub const fn inner(self) -> [V; L] {
+        let Self(arr) = self;
+        arr
     }
 }
 
@@ -44,11 +42,38 @@ impl<const L: usize, V: Mul<Output = V> + Copy + Into<f32>> Vector<L, V> {
     }
 }
 
+impl<V> Vector<1, V>
+where
+    V: Copy,
+{
+    pub const fn x(&self) -> V {
+        self.0[0]
+    }
+}
+
+impl<V> Vector<2, V>
+where
+    V: Copy,
+{
+    pub const fn x(&self) -> V {
+        self.0[0]
+    }
+    pub const fn y(&self) -> V {
+        self.0[1]
+    }
+}
+
 impl<V> Vector<3, V>
 where
     V: Copy,
 {
-    pub fn z(&self) -> V {
+    pub const fn x(&self) -> V {
+        self.0[0]
+    }
+    pub const fn y(&self) -> V {
+        self.0[1]
+    }
+    pub const fn z(&self) -> V {
         self.0[2]
     }
 }
@@ -57,10 +82,16 @@ impl<V> Vector<4, V>
 where
     V: Copy,
 {
-    pub fn z(&self) -> V {
+    pub const fn x(&self) -> V {
+        self.0[0]
+    }
+    pub const fn y(&self) -> V {
+        self.0[1]
+    }
+    pub const fn z(&self) -> V {
         self.0[2]
     }
-    pub fn w(&self) -> V {
+    pub const fn w(&self) -> V {
         self.0[3]
     }
 }

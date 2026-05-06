@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
 type Color = Vector<3, f32>;
 
 fn write_color(color: Color, output: &mut BufWriter<File>) -> io::Result<()> {
-    let Vector([r, g, b]) = color;
+    let [r, g, b] = color.inner();
     let r = (r * RANGE as f32).round() as u8;
     let g = (g * RANGE as f32).round() as u8;
     let b = (b * RANGE as f32).round() as u8;

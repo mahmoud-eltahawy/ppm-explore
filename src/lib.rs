@@ -98,64 +98,50 @@ union ArrayTransmute<T, const N: usize> {
     to: ManuallyDrop<[T; N]>,
 }
 
-impl<const L: usize, V: Add<Output = V> + Copy> Add for Vector<L, V> {
+impl<const L: usize, V> Vector<L, V> {
+    fn zip_map<F: Fn(V, V) -> V>(self, rhs: Self, f: F) -> Self {
+        let mut res: [MaybeUninit<V>; L] = from_fn(|_| MaybeUninit::uninit());
+
+        for (i, (a, b)) in self.0.into_iter().zip(rhs.0).enumerate() {
+            res[i].write(f(a, b));
+        }
+
+        // SAFETY: Every element in `res` has been written to.
+        let union = ArrayTransmute {
+            from: ManuallyDrop::new(res),
+        };
+        Self(unsafe { ManuallyDrop::into_inner(union.to) })
+    }
+}
+
+impl<const L: usize, V: Add<Output = V>> Add for Vector<L, V> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let mut res: [MaybeUninit<V>; L] = from_fn(|_| MaybeUninit::uninit());
-
-        for (i, (a, b)) in self.0.iter().zip(rhs.0).enumerate() {
-            res[i].write(*a + b);
-        }
-
-        let union = ArrayTransmute {
-            from: ManuallyDrop::new(res),
-        };
-        Self(unsafe { ManuallyDrop::into_inner(union.to) })
+        self.zip_map(rhs, V::add)
     }
 }
 
-impl<const L: usize, V: Sub<Output = V> + Copy> Sub for Vector<L, V> {
+impl<const L: usize, V: Sub<Output = V>> Sub for Vector<L, V> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        let mut res: [MaybeUninit<V>; L] = from_fn(|_| MaybeUninit::uninit());
-        for (i, (a, b)) in self.0.iter().zip(rhs.0).enumerate() {
-            res[i].write(*a - b);
-        }
-        let union = ArrayTransmute {
-            from: ManuallyDrop::new(res),
-        };
-        Self(unsafe { ManuallyDrop::into_inner(union.to) })
+        self.zip_map(rhs, V::sub)
     }
 }
 
-impl<const L: usize, V: Div<Output = V> + Copy> Div for Vector<L, V> {
+impl<const L: usize, V: Div<Output = V>> Div for Vector<L, V> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        let mut res: [MaybeUninit<V>; L] = from_fn(|_| MaybeUninit::uninit());
-        for (i, (a, b)) in self.0.iter().zip(rhs.0).enumerate() {
-            res[i].write(*a / b);
-        }
-        let union = ArrayTransmute {
-            from: ManuallyDrop::new(res),
-        };
-        Self(unsafe { ManuallyDrop::into_inner(union.to) })
+        self.zip_map(rhs, V::div)
     }
 }
 
-impl<const L: usize, V: Mul<Output = V> + Copy> Mul for Vector<L, V> {
+impl<const L: usize, V: Mul<Output = V>> Mul for Vector<L, V> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        let mut res: [MaybeUninit<V>; L] = from_fn(|_| MaybeUninit::uninit());
-        for (i, (a, b)) in self.0.iter().zip(rhs.0).enumerate() {
-            res[i].write(*a * b);
-        }
-        let union = ArrayTransmute {
-            from: ManuallyDrop::new(res),
-        };
-        Self(unsafe { ManuallyDrop::into_inner(union.to) })
+        self.zip_map(rhs, V::mul)
     }
 }
